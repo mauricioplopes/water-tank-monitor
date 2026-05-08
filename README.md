@@ -48,9 +48,9 @@ The system publishes measurements to **Adafruit IO** for remote dashboard visual
 ┌────────────────────────────────────────────────────────┐
 │                     ESP32 (Wi-Fi)                      │
 │                                                        │
-│  JSN-SR04T ──(ECHO via voltage divider)──► GPIO 12    │
-│  JSN-SR04T ──(ECHO via voltage divider)──► GPIO 13    │
-│  GPIO 14 ──(TRIGGER)──────────────────────► Both SR04 │
+│  JSN-SR04T ──(ECHO via voltage divider)──► GPIO 12     │
+│  JSN-SR04T ──(ECHO via voltage divider)──► GPIO 13     │
+│  GPIO 14 ──(TRIGGER)──────────────────────► Both SR04  │
 │                                                        │
 │  ┌──────────────────────────────────────────────────┐  │
 │  │  Loop (every ~1 min)                             │  │
@@ -90,6 +90,9 @@ The system publishes measurements to **Adafruit IO** for remote dashboard visual
 > - Cable length: 2500 mm
 > - Connector type: 3.5 mm audio jack
 
+![JSN-SR04T Waterproof Ultrasonic Sensor](pictures/image.png)
+![Water-tank Generic Dimensions](pictures/image_1.png)
+
 ---
 
 ### Water Tank Dimensions
@@ -113,6 +116,8 @@ The minimum distance (`distance_min`) represents the gap between the sensor face
 | Base radius `R2_1` | 0.48 m |
 | Sensor-to-full-water offset | 0.24 m |
 
+![Water-tank 01 Dimensions](pictures/image_11.png)
+
 #### Tank 02
 
 | Parameter | Value |
@@ -121,6 +126,8 @@ The minimum distance (`distance_min`) represents the gap between the sensor face
 | Top inner radius `R1_2` | 0.61 m |
 | Base radius `R2_2` | 0.44 m |
 | Sensor-to-full-water offset | 0.22 m |
+
+![Water-tank 02 Dimensions](pictures/image_12.png)
 
 ---
 
@@ -155,11 +162,48 @@ The JSN-SR04T ECHO pin outputs **5 V pulses**, which would damage the ESP32's 3.
 
 ```
 ECHO (5V) ──┬── R1 (1 kΩ) ──┬── R2 (2.2 kΩ) ── GND
-            │                │
+            │               │
             │           To ESP32 GPIO (≈3.3V)
 ```
 
+![Voltage Divider](pictures/image_2.png)
+
 **Measured output voltage: 3.36 V** — confirmed safe for ESP32 inputs.
+
+#### Voltage Validation Sketch
+
+Run this sketch **before** connecting the ECHO lines to the ESP32. Measure the output of each voltage divider with an oscilloscope or multimeter and confirm it is ≤ 3.3 V.
+
+```cpp
+// ============================================================
+// voltage_test.ino
+// ============================================================
+// Drives the TRIGGER pin continuously so that the JSN-SR04T
+// ECHO line is active. Measure the voltage at the output of
+// each resistor divider before connecting it to the ESP32.
+//
+// ⚠️  Do NOT connect the ECHO lines to the ESP32 until you
+//     have confirmed the voltage is ≤ 3.3 V.
+// ============================================================
+
+const int triggerPin = 4; // GPIO4 – TRIGGER output
+
+void setup() {
+  pinMode(triggerPin, OUTPUT);
+}
+
+void loop() {
+  // Generate a 10 µs trigger pulse
+  digitalWrite(triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(triggerPin, LOW);
+  delay(1); // ~1 ms between pulses
+}
+```
+
+> **Measured result:** 3.36 V on both ECHO lines — confirmed safe.
+
+![Voltage Divider Measure](pictures/dso_01_01_00_12_18.bmp)
 
 > ⚠️ **Safety procedure before wiring:**  
 > Run the [voltage validation sketch](#voltage-validation-sketch) first,  
@@ -174,8 +218,8 @@ The full circuit schematic shows the ESP32 connected to both JSN-SR04T sensors, 
 
 ```
           ┌─────────────────────────────────────────┐
-          │             ESP32 (30-pin)               │
-          │                                          │
+          │             ESP32 (30-pin)              │
+          │                                         │
 5V ───────┤ VIN                           GPIO14 ───┼──── TRIG (both sensors)
 GND ──────┤ GND                           GPIO12 ◄──┼──── ECHO01 (via divider)
           │                               GPIO13 ◄──┼──── ECHO02 (via divider)
@@ -190,17 +234,28 @@ ECHO02: SR04_2 ECHO ─── R1(1kΩ) ─── node ─── R2(2.2kΩ) ─�
                                     GPIO13
 ```
 
+![Schematic](pictures/image_3.png)
+
 ---
 
 ### Breadboard Layout
 
 The prototype was first assembled on a breadboard for validation before being transferred to the permanent perf board. Both JSN-SR04T modules (mounted on blue breakout boards) connect through the resistor voltage dividers to the ESP32 NodeMCU.
 
+![Breadboard layout](pictures/image_4.png)
+![Breadboard assembly](pictures/image_5.png)
+![Tests at the workbench](pictures/image_6.png)
+
 ---
 
 ### Final Assembly (PCB)
 
 The final assembly uses a 5×7 cm perf board (ilhada) soldered point-to-point following a hand-drawn layout diagram. The PCB is mounted inside a transparent plastic enclosure with standoffs, and the sensor cables exit through cable glands in the lid. The unit is powered via a USB cable.
+
+![Perf Board Layout](pictures/image_7.png)
+![Perf Board Assembly 1](pictures/image_8.png)
+![Perf Board Assembly 2](pictures/image_9.png)
+![Perf Board Assembly 3](pictures/image_10.png)
 
 ---
 
@@ -612,41 +667,6 @@ void loop(void) {
 
 ---
 
-#### Voltage Validation Sketch
-
-Run this sketch **before** connecting the ECHO lines to the ESP32. Measure the output of each voltage divider with an oscilloscope or multimeter and confirm it is ≤ 3.3 V.
-
-```cpp
-// ============================================================
-// voltage_test.ino
-// ============================================================
-// Drives the TRIGGER pin continuously so that the JSN-SR04T
-// ECHO line is active. Measure the voltage at the output of
-// each resistor divider before connecting it to the ESP32.
-//
-// ⚠️  Do NOT connect the ECHO lines to the ESP32 until you
-//     have confirmed the voltage is ≤ 3.3 V.
-// ============================================================
-
-const int triggerPin = 4; // GPIO4 – TRIGGER output
-
-void setup() {
-  pinMode(triggerPin, OUTPUT);
-}
-
-void loop() {
-  // Generate a 10 µs trigger pulse
-  digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(triggerPin, LOW);
-  delay(1); // ~1 ms between pulses
-}
-```
-
-> **Measured result:** 3.36 V on both ECHO lines — confirmed safe.
-
----
-
 ## 📊 Dashboard (Adafruit IO)
 
 Data is published to [io.adafruit.com](https://io.adafruit.com) via MQTT. A public dashboard shows:
@@ -655,6 +675,8 @@ Data is published to [io.adafruit.com](https://io.adafruit.com) via MQTT. A publ
 - A **line chart** with 7-day historical data for each tank
 
 The dashboard is accessible from any smartphone or computer without logging in.
+
+![Adafruit Dashboard](pictures/image_15.png)
 
 ---
 
@@ -669,6 +691,8 @@ Alerts are sent using the [CallMeBot](https://www.callmebot.com) API (free, no a
 
 A 120-minute cooldown prevents repeated alerts for a sustained low-level condition.  
 A single recovery notification is sent once the level returns to normal.
+
+![WhatsApp Alerts](pictures/image_14.png)
 
 ---
 
